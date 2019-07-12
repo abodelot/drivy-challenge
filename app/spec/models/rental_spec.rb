@@ -146,4 +146,29 @@ describe Rental do
       )
     end
   end
+
+  describe '#owner_share' do
+    it 'should compute owner share' do
+      expect(@rental.owner_share).to eq(
+        @rental.price - @rental.commission
+      )
+    end
+  end
+
+  describe '#actions' do
+    it 'should be a zero-sum game' do
+      credits = @rental.actions
+        .select { |action| action[:type] == :credit }
+        .pluck(:amount)
+        .sum
+
+      debits = @rental.actions
+        .select { |action| action[:type] == :debit }
+        .pluck(:amount)
+        .sum
+
+      expect(credits).to eq @rental.price
+      expect(credits).to eq debits
+    end
+  end
 end

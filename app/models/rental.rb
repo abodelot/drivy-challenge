@@ -71,6 +71,10 @@ class Rental < ActiveRecord::Base
     price * COMMISSION_PERCENT / 100.0
   end
 
+  def owner_share
+    (price - commission).round
+  end
+
   def insurance_fee
     (commission * INSURANCE_FEE_COMMISSION_PERCENT / 100).round
   end
@@ -81,6 +85,36 @@ class Rental < ActiveRecord::Base
 
   def drivy_fee
     (commission - insurance_fee - assistance_fee).round
+  end
+
+  def actions
+    [
+      {
+        who: :driver,
+        type: :debit,
+        amount: price
+      },
+      {
+        who: :owner,
+        type: :credit,
+        amount: owner_share
+      },
+      {
+        who: :insurance,
+        type: :credit,
+        amount: insurance_fee
+      },
+      {
+        who: :assistance,
+        type: :credit,
+        amount: assistance_fee
+      },
+      {
+        who: :drivy,
+        type: :credit,
+        amount: drivy_fee
+      }
+    ]
   end
 
   private
