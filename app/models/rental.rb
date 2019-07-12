@@ -1,4 +1,12 @@
 class Rental < ActiveRecord::Base
+
+  DISCOUNTS = [
+    # [required days for discount, discount percent]
+    [10, 50],
+    [4, 30],
+    [1, 10],
+  ]
+
   belongs_to :car
 
   validates :distance, presence: true
@@ -23,10 +31,12 @@ class Rental < ActiveRecord::Base
 
   ##
   # Price time component:
-  # the number of rental days multiplied by the car's price per day
+  # price_per_day * number of days, but price_per_day decreases by X% after Y days
   #
   def time_price
-    car.price_per_day * days
+    (1..days).map { |x|
+      car.price_per_day * (1 - Rental.discount(x) / 100.0)
+    }.sum.to_i
   end
 
   ##
@@ -35,6 +45,19 @@ class Rental < ActiveRecord::Base
   #
   def distance_price
     distance * car.price_per_km
+  end
+
+  ##
+  # Get discount percent for given number of days
+  # @return int [0..100]
+  #
+  def self.discount(nb_days)
+    DISCOUNTS.each do |min_days, percent|
+      if nb_days > min_days
+        return percent
+      end
+    end
+    return 0
   end
 
   private

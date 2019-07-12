@@ -52,19 +52,52 @@ describe Rental do
 
   describe '#time_price' do
     it 'should compute price base on time' do
-      expect(@rental.time_price).to eq(6000) # 3 * 2000
+      # day 1: 2000
+      # day 2-3: 1800
+      expect(@rental.time_price).to eq(5600)
 
-      @rental.end_date = @rental.end_date.next_day
-      expect(@rental.time_price).to eq(8000) # 4 * 2000
+      @rental.end_date = @rental.start_date + 5.days
+      # day 1: 2000
+      # day 2-4: 1800
+      # day 5-6: 1400
+      expect(@rental.time_price).to eq(10200)
 
       @rental.car.price_per_day = 1000
-      expect(@rental.time_price).to eq(4000) # 4 * 1000
+      # day 1: 1000
+      # day 2-4: 900
+      # day 5-6: 700
+      expect(@rental.time_price).to eq(5100)
     end
   end
 
   describe '#price' do
     it 'should compute total price' do
-      expect(@rental.price).to eq(7000)
+      # day 1: 2000
+      # day 2-3: 1800
+      # distance: 1000
+      expect(@rental.price).to eq(6600)
+    end
+  end
+
+  describe '#discount' do
+    it 'should give 50% discount after 10 days' do
+      expect(Rental.discount(11)).to eq 50
+      expect(Rental.discount(15)).to eq 50
+    end
+
+    it 'should give 30% discount after 4 days' do
+      expect(Rental.discount(5)).to eq 30
+      expect(Rental.discount(10)).to eq 30
+    end
+
+    it 'should give 10% discount after 1 day' do
+      expect(Rental.discount(3)).to eq 10
+      expect(Rental.discount(2)).to eq 10
+    end
+
+    it 'should not give a discount' do
+      expect(Rental.discount(1)).to eq 0
+      expect(Rental.discount(0)).to eq 0
     end
   end
 end
