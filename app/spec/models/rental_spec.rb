@@ -100,4 +100,50 @@ describe Rental do
       expect(Rental.discount(0)).to eq 0
     end
   end
+
+  describe '#commission' do
+    it 'should compute commission' do
+      expect(@rental.commission).to eq 1980
+      expect(@rental.price * Rental::COMMISSION_PERCENT / 100).to eq 1980
+    end
+
+    it 'should be the sum of all fees' do
+      expect(@rental.commission).to eq(
+        @rental.insurance_fee + @rental.assistance_fee + @rental.drivy_fee
+      )
+    end
+  end
+
+  describe '#insurance_fee' do
+    it 'should compute insurance fee' do
+      expect(@rental.insurance_fee).to eq 990
+
+      stub_const('Rental::INSURANCE_FEE_COMMISSION_PERCENT', 100)
+      expect(@rental.insurance_fee).to eq @rental.commission
+    end
+  end
+
+  describe '#assistance_fee' do
+    it 'should compute assistance fee, based on days' do
+      expect(@rental.assistance_fee).to eq 300
+
+      @rental.end_date = @rental.start_date + 5.days
+      expect(@rental.assistance_fee).to eq 600
+
+      @rental.end_date = @rental.start_date + 1.day
+      expect(@rental.assistance_fee).to eq 200
+
+      stub_const('Rental::ASSISTANCE_FEE_PER_DAY', 300)
+      expect(@rental.assistance_fee).to eq 600
+    end
+  end
+
+  describe '#drivy_fee' do
+    it 'should compute drivy fee as the remaining' do
+      expect(@rental.drivy_fee).to eq 690
+      expect(@rental.drivy_fee).to eq(
+        @rental.commission - @rental.insurance_fee - @rental.assistance_fee
+      )
+    end
+  end
 end

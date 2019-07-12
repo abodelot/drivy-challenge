@@ -1,4 +1,11 @@
 class Rental < ActiveRecord::Base
+  COMMISSION_PERCENT = 30
+
+  # half of commission goes to the insurance
+  INSURANCE_FEE_COMMISSION_PERCENT = 50
+
+  # 1 EUR per day goes the roadside assistance
+  ASSISTANCE_FEE_PER_DAY = 100 # (100 cts)
 
   DISCOUNTS = [
     # [required days for discount, discount percent]
@@ -58,6 +65,22 @@ class Rental < ActiveRecord::Base
       end
     end
     return 0
+  end
+
+  def commission
+    price * COMMISSION_PERCENT / 100.0
+  end
+
+  def insurance_fee
+    (commission * INSURANCE_FEE_COMMISSION_PERCENT / 100).round
+  end
+
+  def assistance_fee
+    days * ASSISTANCE_FEE_PER_DAY
+  end
+
+  def drivy_fee
+    (commission - insurance_fee - assistance_fee).round
   end
 
   private
