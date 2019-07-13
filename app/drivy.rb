@@ -1,8 +1,13 @@
 require 'json'
 require 'active_record'
 
+require_relative 'lib/action_exporter'
 require_relative 'models/car'
 require_relative 'models/rental'
+require_relative 'models/option'
+require_relative 'models/option/additional_insurance'
+require_relative 'models/option/baby_seat'
+require_relative 'models/option/gps'
 
 module Drivy
   path = File.dirname(__FILE__) + '/config/database.yml'
@@ -10,12 +15,15 @@ module Drivy
   ActiveRecord::Base.establish_connection(db_config)
 
   class << self
+    include ActionExporter
+
     def rentals
       {
         rentals: Rental.order(:id).map do |rental|
           {
             id: rental.id,
-            actions: rental.actions
+            options: rental.options.map(&:name),
+            actions: generate_actions_from_rental(rental)
           }
         end
       }
@@ -30,6 +38,7 @@ module Drivy
 
     def populate_db(filepath)
       # Clean-up previous data
+      Option.delete_all
       Rental.delete_all
       Car.delete_all
 

@@ -9,7 +9,12 @@ describe Rental do
       car: Car.new(
         price_per_day: 2000,
         price_per_km: 10
-      )
+      ),
+      options: [
+        Option::AdditionalInsurance.new,
+        Option::BabySeat.new,
+        Option::Gps.new
+      ]
     )
   end
 
@@ -70,12 +75,18 @@ describe Rental do
     end
   end
 
-  describe '#price' do
-    it 'should compute total price' do
+  describe '#booking_price' do
+    it 'should compute booking price based on time and distance' do
       # day 1: 2000
       # day 2-3: 1800
       # distance: 1000
-      expect(@rental.price).to eq(6600)
+      expect(@rental.booking_price).to eq(6600)
+    end
+
+    it 'should equals to price when no options' do
+      expect(@rental.booking_price).to be < @rental.price
+      @rental.options = []
+      expect(@rental.booking_price).to eq(@rental.price)
     end
   end
 
@@ -104,7 +115,7 @@ describe Rental do
   describe '#commission' do
     it 'should compute commission' do
       expect(@rental.commission).to eq 1980
-      expect(@rental.price * Rental::COMMISSION_PERCENT / 100).to eq 1980
+      expect(@rental.booking_price * Rental::COMMISSION_PERCENT / 100).to eq 1980
     end
 
     it 'should be the sum of all fees' do
@@ -150,25 +161,21 @@ describe Rental do
   describe '#owner_share' do
     it 'should compute owner share' do
       expect(@rental.owner_share).to eq(
-        @rental.price - @rental.commission
+        @rental.price - @rental.commission - @rental.send(:options_price_for, :drivy)
       )
     end
   end
 
-  describe '#actions' do
-    it 'should be a zero-sum game' do
-      credits = @rental.actions
-        .select { |action| action[:type] == :credit }
-        .pluck(:amount)
-        .sum
+  describe '#drivy_share' do
+    it 'should compute drivy share' do
+      expect(@rental.drivy_share).to eq(
+        @rental.drivy_fee + @rental.send(:options_price_for, :drivy)
+      )
+    end
 
-      debits = @rental.actions
-        .select { |action| action[:type] == :debit }
-        .pluck(:amount)
-        .sum
-
-      expect(credits).to eq @rental.price
-      expect(credits).to eq debits
+    it 'should equals to drivy fee when no options' do
+      @rental.options = []
+      expect(@rental.drivy_share).to eq @rental.drivy_fee
     end
   end
 end

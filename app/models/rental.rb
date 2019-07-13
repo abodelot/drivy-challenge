@@ -14,9 +14,10 @@ class Rental < ActiveRecord::Base
     [1, 10],
   ]
 
-  belongs_to :car
+  belongs_to :car, required: true
+  has_many :options
 
-  validates :distance, presence: true
+  validates :distance, numericality: { greater_than: 0 }
   validates :start_date, presence: true
   validates :end_date, presence: true
   validate :valid_rental_dates?
@@ -33,17 +34,25 @@ class Rental < ActiveRecord::Base
   # The total price billed to the driver
   #
   def price
-    (time_price + distance_price).to_i
+    booking_price + options.map(&:price).sum
+  end
+
+  ##
+  # The price based on time and distance.
+  # This is the base price for computing commission and fees.
+  #
+  def booking_price
+    time_price + distance_price
   end
 
   ##
   # Price time component:
-  # price_per_day * number of days, but price_per_day decreases by X% after Y days
+  # price_per_day * number of days, price_per_day decreases by X% after Y days
   #
   def time_price
     (1..days).map { |x|
       car.price_per_day * (1 - Rental.discount(x) / 100.0)
-    }.sum.to_i
+    }.sum.round
   end
 
   ##
@@ -68,11 +77,15 @@ class Rental < ActiveRecord::Base
   end
 
   def commission
-    price * COMMISSION_PERCENT / 100.0
+    booking_price * COMMISSION_PERCENT / 100.0
   end
 
   def owner_share
-    (price - commission).round
+    (booking_price - commission).round + options_price_for(:owner)
+  end
+
+  def drivy_share
+    drivy_fee + options_price_for(:drivy)
   end
 
   def insurance_fee
@@ -87,41 +100,15 @@ class Rental < ActiveRecord::Base
     (commission - insurance_fee - assistance_fee).round
   end
 
-  def actions
-    [
-      {
-        who: :driver,
-        type: :debit,
-        amount: price
-      },
-      {
-        who: :owner,
-        type: :credit,
-        amount: owner_share
-      },
-      {
-        who: :insurance,
-        type: :credit,
-        amount: insurance_fee
-      },
-      {
-        who: :assistance,
-        type: :credit,
-        amount: assistance_fee
-      },
-      {
-        who: :drivy,
-        type: :credit,
-        amount: drivy_fee
-      }
-    ]
-  end
-
   private
 
   def valid_rental_dates?
-    if start_date > end_date
+    if start_date.nil? || end_date.nil? || start_date > end_date
       errors.add(:end_date, 'must be after start date')
     end
+  end
+
+  def options_price_for(payee)
+    options.select { |option| option.payee == payee }.map(&:price).sum
   end
 end
